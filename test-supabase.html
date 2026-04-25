@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Supabase Connection</title>
+</head>
+<body>
+    <h1>Test Supabase Connection</h1>
+    <div id="result"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = "https://hzwhdpsytvnvfuqncqgq.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6d2hkcHN5dHZudmZ1cW5jcWdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ0MDI2MTEsImV4cCI6MjA2MDAwNDYxMX0.ggY6wBx21Wc481nKc2Wrw_VgxgH25Y";
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        async function testConnection() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing connection...</p>';
+            
+            try {
+                // Test reading from app_state table
+                const { data, error } = await supabase
+                    .from('app_state')
+                    .select('state')
+                    .eq('id', 1)
+                    .maybeSingle();
+                
+                if (error) {
+                    resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                } else {
+                    resultDiv.innerHTML = `<p style="color: green;">Connection successful! Data: ${JSON.stringify(data, null, 2)}</p>`;
+                }
+                
+                // Test writing/updating
+                const testState = {
+                    customers: [],
+                    products: [],
+                    sales: [],
+                    payments: [],
+                    shopPhone: "",
+                    inventoryLog: []
+                };
+                
+                const { data: upsertData, error: upsertError } = await supabase
+                    .from('app_state')
+                    .upsert({
+                        id: 1,
+                        state: testState,
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'id' });
+                
+                if (upsertError) {
+                    resultDiv.innerHTML += `<p style="color: orange;">Upsert test failed: ${upsertError.message}</p>`;
+                } else {
+                    resultDiv.innerHTML += `<p style="color: green;">Upsert test successful!</p>`;
+                }
+                
+            } catch (e) {
+                resultDiv.innerHTML = `<p style="color: red;">Exception: ${e.message}</p>`;
+            }
+        }
+        
+        // Run test when page loads
+        testConnection();
+    </script>
+</body>
+</html>

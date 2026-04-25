@@ -244,6 +244,13 @@
     .tx-ban { background: #e3f2fd; color: #1565c0; }
     .tx-tt { background: #e8f5e9; color: var(--green-800); }
     .public-wrap { padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
+    .public-store {
+      text-align: center;
+      font-size: clamp(1.05rem, 4.8vw, 1.4rem);
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      margin-top: 0.25rem;
+    }
     .public-card {
       text-align: center;
       padding: 1.5rem 1rem;
@@ -292,6 +299,19 @@
     .equation-box .eq-note { font-size: 0.72rem; color: var(--muted); margin-top: 0.5rem; }
     .timeline { margin-top: 0.5rem; text-align: left; }
     .timeline h3 { font-size: 0.95rem; color: var(--green-800); margin: 1rem 0 0.5rem; }
+    .tx-mini-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-top: 0.4rem;
+    }
+    .tx-mini-table th, .tx-mini-table td {
+      border-bottom: 1px solid var(--green-100);
+      padding: 0.4rem 0.25rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    .tx-mini-table th { color: var(--green-800); font-size: 0.78rem; }
     .tl-item {
       padding: 0.75rem 0.65rem;
       border-left: 3px solid var(--green-500);
@@ -408,6 +428,19 @@
     }
     .phieu-thu h4 { margin: 0 0 0.75rem; text-align: center; font-size: 1.05rem; }
     .phieu-thu .line { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.25rem 0; border-bottom: 1px dashed var(--green-100); }
+    .debt-bulk-box {
+      margin-top: 0.85rem;
+      border: 1px solid var(--green-100);
+      border-radius: 10px;
+      padding: 0.65rem;
+      background: var(--green-50);
+    }
+    .debt-bulk-item {
+      padding: 0.5rem 0;
+      border-bottom: 1px dashed var(--green-100);
+      font-size: 0.85rem;
+    }
+    .debt-bulk-item:last-child { border-bottom: none; }
     @media print {
       body * { visibility: hidden !important; }
       #print-root, #print-root * { visibility: visible !important; }
@@ -457,11 +490,16 @@
             <div class="val" id="dash-doanh-thu-hom-nay">0 đ</div>
           </div>
           <div class="stat-card" style="grid-column: 1 / -1">
+            <div class="lbl">Tổng tiền hàng trong kho</div>
+            <div class="val" id="dash-ton-kho-gia-tri">0 đ</div>
+          </div>
+          <div class="stat-card" style="grid-column: 1 / -1">
             <div class="lbl">Khách có nợ, không thanh toán trong 30 ngày</div>
             <div class="val red" id="dash-no-30">0</div>
             <p class="muted" style="margin:0.35rem 0 0;font-size:0.7rem">Ước lượng: còn nợ &amp; không có phiếu thu trong 30 ngày qua.</p>
           </div>
         </div>
+        <div id="dash-no-30-warn" class="warn-banner" style="display:none"></div>
         <div class="bar-chart-wrap">
           <div class="bar-chart-title">Doanh thu bán hàng 7 ngày gần nhất</div>
           <div class="bar-chart" id="dash-chart-7"></div>
@@ -481,7 +519,7 @@
         <h2>Khách hàng</h2>
         <form id="form-khach">
           <label for="k-ten">Tên khách</label>
-          <input id="k-ten" required placeholder="Ví dụ: Nguyễn Văn A" />
+          <input id="k-ten" required placeholder="Ví dụ: Nguyễn Văn A"**autocomplete="off"**>          />
           <label for="k-sdt">Số điện thoại</label>
           <input id="k-sdt" required inputmode="tel" placeholder="0901234567" />
           <label for="k-dc">Địa chỉ</label>
@@ -502,6 +540,8 @@
             </select>
           </div>
         </div>
+        <button type="button" class="btn btn-secondary" id="btn-nhac-no">📢 Nhắc nợ tất cả</button>
+        <div id="khach-nhac-no-box" class="debt-bulk-box" style="display:none"></div>
         <ul class="list" id="list-khach"></ul>
       </section>
 
@@ -551,10 +591,11 @@
           <label for="b-sl">Số lượng bán</label>
           <input id="b-sl" type="number" min="0.01" step="0.01" required />
           <label for="b-ghichu">Ghi chú đơn hàng</label>
-          <textarea id="b-ghichu" placeholder="Giao buổi chiều, CK..."></textarea>
+          <textarea id="b-ghichu" placeholder="Ví dụ: mua chịu vụ xuân"></textarea>
           <p class="muted" id="ban-preview"></p>
           <button type="submit" class="btn">Ghi bán &amp; cộng nợ</button>
         </form>
+        <div id="ban-zalo-box" class="debt-bulk-box" style="display:none"></div>
         <h2 style="margin-top:1.25rem">Giao dịch gần đây</h2>
         <ul class="list" id="list-ban"></ul>
       </section>
@@ -595,7 +636,7 @@
         <ul class="list" id="list-bcao"></ul>
       </section>
     </main>
-    <footer class="app-foot">Dữ liệu lưu trên máy (localStorage)</footer>
+    <footer class="app-foot">Dữ liệu lưu trên Supabase cloud</footer>
   </div>
 
   <div id="modal-khach" class="modal-overlay" aria-hidden="true">
@@ -624,7 +665,8 @@
 
   <div id="public-root" style="display:none">
     <header class="app-header">
-      <h1>Tra cứu công nợ</h1>
+      <h1 id="pub-store-name">Phân bón Việt Quỳnh</h1>
+      <div class="public-store">Tra cứu công nợ khách hàng</div>
       <p id="pub-sub">Hải Dương</p>
     </header>
     <main class="public-wrap">
@@ -636,9 +678,12 @@
         <div class="muted" id="pub-dc" style="margin-top:0.35rem"></div>
         <div class="equation-box" id="pub-equation" style="display:none"></div>
         <a class="btn btn-outline" id="pub-call" href="#" style="display:none;margin-top:1rem">Gọi cho cửa hàng</a>
+        <button class="btn btn-secondary" id="pub-share" type="button" style="margin-top:0.6rem">Chia sẻ trang này</button>
       </div>
       <div class="panel">
         <div class="timeline">
+          <h3>5 giao dịch gần nhất</h3>
+          <div id="pub-gd"></div>
           <h3>Lịch sử mua hàng</h3>
           <div id="pub-mua"></div>
           <h3>Lịch sử thanh toán</h3>
@@ -649,12 +694,17 @@
     <footer class="app-foot">Chỉ hiển thị thông tin của quý khách — không cần đăng nhập</footer>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
 (function () {
   var STORAGE_KEY = "phanPhoiHaiDuong_v1";
   var THRESH_WARN = 2000000;
   var THRESH_DANGER = 5000000;
   var LOW_STOCK = 10;
+  var SHARE_BASE_URL = "https://phanbonvietquynh.netlify.app";
+  var SUPABASE_URL = "https://hzwhdpsytvnvfuqncqgq.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6d2hkcHN5dHZudmZ1cW5jcWdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ0MDI2MTEsImV4cCI6MjA2MDAwNDYxMX0.ggY6wBx21Wc481nKc2Wrw_VgxgH25Y";
+  var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   function normalizePhone(s) {
     if (!s) return "";
@@ -705,38 +755,97 @@
 
   function zaloLinkRelative(phone) {
     var norm = normalizePhone(phone);
-    return "index.html?khach=" + encodeURIComponent(norm || String(phone));
+    return SHARE_BASE_URL + "?khach=" + encodeURIComponent(norm || String(phone));
   }
 
-  function loadState() {
+  function defaultState() {
+    return {
+      customers: [],
+      products: [],
+      sales: [],
+      payments: [],
+      shopPhone: "",
+      inventoryLog: []
+    };
+  }
+
+  async function loadState() {
     try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
+      // Try to load from Supabase first
+      var res = await supabase.from("app_state").select("state").eq("id", 1).maybeSingle();
+      if (res.error && res.error.code !== "PGRST116") throw res.error;
+      var state = res.data && res.data.state ? res.data.state : null;
+      if (state) {
         return {
-          customers: [],
-          products: [],
-          sales: [],
-          payments: [],
-          shopPhone: "",
-          inventoryLog: []
+          customers: state.customers || [],
+          products: state.products || [],
+          sales: state.sales || [],
+          payments: state.payments || [],
+          shopPhone: state.shopPhone != null ? String(state.shopPhone) : "",
+          inventoryLog: state.inventoryLog || []
         };
       }
-      var o = JSON.parse(raw);
-      return {
-        customers: o.customers || [],
-        products: o.products || [],
-        sales: o.sales || [],
-        payments: o.payments || [],
-        shopPhone: o.shopPhone != null ? String(o.shopPhone) : "",
-        inventoryLog: o.inventoryLog || []
-      };
     } catch (e) {
-      return { customers: [], products: [], sales: [], payments: [], shopPhone: "", inventoryLog: [] };
+      console.warn("Supabase load failed, falling back to localStorage:", e);
     }
+    
+    // Fallback to localStorage
+    try {
+      var localData = localStorage.getItem(STORAGE_KEY);
+      if (localData) {
+        var parsed = JSON.parse(localData);
+        return {
+          customers: parsed.customers || [],
+          products: parsed.products || [],
+          sales: parsed.sales || [],
+          payments: parsed.payments || [],
+          shopPhone: parsed.shopPhone || "",
+          inventoryLog: parsed.inventoryLog || []
+        };
+      }
+    } catch (e) {
+      console.warn("localStorage load failed:", e);
+    }
+    
+    // Final fallback to default state
+    return defaultState();
   }
 
-  function saveState(state) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  async function saveState(currentState) {
+
+    var state = {
+      customers: currentState.customers || [],
+      products: currentState.products || [],
+      sales: currentState.sales || [],
+      payments: currentState.payments || [],
+      shopPhone: currentState.shopPhone || "",
+      inventoryLog: currentState.inventoryLog || []
+    };
+    
+    // Always save to localStorage first as backup
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.warn("localStorage save failed:", e);
+    }
+    
+    // Try to save to Supabase
+    try {
+      var res = await supabase.from("app_state").upsert(
+        {
+          id: 1,
+          state: state,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: "id" }
+      );
+      if (res.error) throw res.error;
+      return res;
+    } catch (e) {
+      console.warn("Supabase save failed, data saved locally:", e);
+      // Don't show alert to user, just continue with local storage
+      return { data: null, error: e };
+    }
   }
 
   function getCustomerByPhone(state, phoneNorm) {
@@ -789,7 +898,7 @@
     }
   }
 
-  var state = loadState();
+  var state = defaultState();
   var lastPhieuThu = null;
 
   function ensureInventoryLog() {
@@ -873,12 +982,7 @@
   var khachParam = params.get("khach");
   var publicPhoneNorm = khachParam ? normalizePhone(khachParam) : "";
 
-  if (publicPhoneNorm) {
-    document.getElementById("admin-root").style.display = "none";
-    document.getElementById("public-root").style.display = "block";
-    renderPublic(state, publicPhoneNorm);
-    return;
-  }
+  // Dữ liệu sẽ được nạp từ Supabase trong init()
 
   function renderPublic(st, phoneNorm) {
     var c = getCustomerByPhone(st, phoneNorm);
@@ -887,8 +991,10 @@
     var pubDc = document.getElementById("pub-dc");
     var pubMua = document.getElementById("pub-mua");
     var pubTt = document.getElementById("pub-tt");
+    var pubGd = document.getElementById("pub-gd");
     var pubEq = document.getElementById("pub-equation");
     var pubCall = document.getElementById("pub-call");
+    var pubShare = document.getElementById("pub-share");
 
     if (!c) {
       pubTen.textContent = "Không tìm thấy khách hàng";
@@ -897,8 +1003,10 @@
       pubDc.textContent = "Vui lòng kiểm tra lại đường link hoặc liên hệ cửa hàng.";
       pubMua.innerHTML = '<p class="empty">Không có dữ liệu</p>';
       pubTt.innerHTML = '<p class="empty">Không có dữ liệu</p>';
+      pubGd.innerHTML = '<p class="empty">Không có dữ liệu</p>';
       pubEq.style.display = "none";
       pubCall.style.display = "none";
+      pubShare.style.display = "none";
       return;
     }
 
@@ -918,15 +1026,12 @@
     st.payments.forEach(function (p) {
       if (p.customerPhoneNorm === phoneNorm) totalTra += Number(p.amount) || 0;
     });
-    var noCu = debt - totalMua + totalTra;
-
     pubEq.style.display = "block";
     pubEq.innerHTML =
-      '<div class="eq-row"><span>Nợ cũ (ước tính)</span><span>+ ' + formatMoney(noCu) + "</span></div>" +
-      '<div class="eq-row"><span>Mua thêm (ghi nợ)</span><span>+ ' + formatMoney(totalMua) + "</span></div>" +
+      '<div class="eq-row"><span>Tổng mua</span><span>' + formatMoney(totalMua) + "</span></div>" +
       '<div class="eq-row"><span>Đã trả</span><span>− ' + formatMoney(totalTra) + "</span></div>" +
       '<div class="eq-row"><span>Còn nợ</span><span>= ' + formatMoney(debt) + "</span></div>" +
-      '<p class="eq-note">Công thức: <strong>Nợ cũ</strong> + <strong>Mua thêm</strong> − <strong>Đã trả</strong> = <strong>Còn nợ</strong>. "Nợ cũ" suy ra từ sổ nếu trước đây đã có phát sinh ngoài ứng dụng.</p>';
+      '<p class="eq-note">Công thức rõ ràng: <strong>Tổng mua</strong> − <strong>Đã trả</strong> = <strong>Còn nợ</strong>.</p>';
 
     var shopTel = normalizePhone(st.shopPhone || "");
     if (shopTel) {
@@ -935,6 +1040,21 @@
     } else {
       pubCall.style.display = "none";
     }
+
+    pubShare.style.display = "inline-flex";
+    pubShare.onclick = function () {
+      var shareUrl = window.location.href;
+      var shareTitle = "Trang công nợ - " + c.name;
+      if (navigator.share) {
+        navigator.share({
+          title: shareTitle,
+          text: "Xem công nợ của khách hàng",
+          url: shareUrl
+        }).catch(function () {});
+      } else {
+        copyText(shareUrl, "Đã copy link trang này để chia sẻ.");
+      }
+    };
 
     var salesHtml = st.sales
       .filter(function (s) { return s.customerPhoneNorm === phoneNorm; })
@@ -976,6 +1096,39 @@
       })
       .join("");
     pubTt.innerHTML = payHtml || '<p class="empty">Chưa có thanh toán</p>';
+
+    var txs = [];
+    st.sales.forEach(function (s) {
+      if (s.customerPhoneNorm !== phoneNorm) return;
+      txs.push({
+        at: s.at,
+        type: "Mua",
+        desc: (s.productName || "") + " × " + s.qty,
+        amount: Number(s.total) || 0
+      });
+    });
+    st.payments.forEach(function (p) {
+      if (p.customerPhoneNorm !== phoneNorm) return;
+      txs.push({
+        at: p.at,
+        type: "Trả",
+        desc: "Thanh toán",
+        amount: Number(p.amount) || 0
+      });
+    });
+    txs.sort(function (a, b) { return new Date(b.at) - new Date(a.at); });
+    var recent = txs.slice(0, 5);
+    if (!recent.length) {
+      pubGd.innerHTML = '<p class="empty">Chưa có giao dịch</p>';
+    } else {
+      var table = '<table class="tx-mini-table"><thead><tr><th>Ngày</th><th>Loại</th><th>Nội dung</th><th>Số tiền</th></tr></thead><tbody>';
+      recent.forEach(function (r) {
+        table +=
+          "<tr><td>" + escapeHtml(formatDate(r.at)) + "</td><td>" + escapeHtml(r.type) + "</td><td>" + escapeHtml(r.desc) + "</td><td>" + escapeHtml(formatMoney(r.amount)) + "</td></tr>";
+      });
+      table += "</tbody></table>";
+      pubGd.innerHTML = table;
+    }
   }
 
   function escapeHtml(t) {
@@ -1019,9 +1172,26 @@
       if (localDateKeyFromIso(s.at) === todayKey) dtHomNay += Number(s.total) || 0;
     });
     document.getElementById("dash-doanh-thu-hom-nay").textContent = formatMoney(dtHomNay);
+    var tonKhoGiaTri = 0;
+    state.products.forEach(function (p) {
+      tonKhoGiaTri += (Number(p.qty) || 0) * (Number(p.unitPrice) || 0);
+    });
+    var elTonKho = document.getElementById("dash-ton-kho-gia-tri");
+    if (elTonKho) elTonKho.textContent = formatMoney(tonKhoGiaTri);
 
     var elNo30 = document.getElementById("dash-no-30");
     if (elNo30) elNo30.textContent = String(countDebtorsNoPayment30Days());
+    var warnNo30 = document.getElementById("dash-no-30-warn");
+    if (warnNo30) {
+      var cntNo30 = countDebtorsNoPayment30Days();
+      if (cntNo30 > 0) {
+        warnNo30.style.display = "block";
+        warnNo30.textContent = "Cảnh báo: Có " + cntNo30 + " khách nợ quá 30 ngày chưa thanh toán.";
+      } else {
+        warnNo30.style.display = "none";
+        warnNo30.textContent = "";
+      }
+    }
     renderChart7Days();
 
     var ul = document.getElementById("dash-top5");
@@ -1198,7 +1368,7 @@
         '<div class="customer-actions">' +
         '<button type="button" class="btn btn-secondary btn-sm btn-copy-zalo" data-copy="' +
         escapeHtml(zaloRel) +
-        '">Copy link Zalo</button>' +
+        '">📋 Copy link Zalo</button>' +
         "</div></div>" +
         (c.address ? '<span class="muted">' + escapeHtml(c.address) + "</span><br/>" : "") +
         'Nợ: <span class="debt ' +
@@ -1215,7 +1385,7 @@
     Array.prototype.forEach.call(ul.querySelectorAll(".btn-copy-zalo"), function (btn) {
       btn.addEventListener("click", function () {
         var rel = btn.getAttribute("data-copy");
-        if (rel) copyText(rel, "Đã copy link Zalo:\n" + rel);
+        if (rel) copyText(rel, "Đã copy! Gửi cho khách qua Zalo");
       });
     });
     Array.prototype.forEach.call(ul.querySelectorAll(".btn-open-khach"), function (btn) {
@@ -1288,10 +1458,41 @@
   document.getElementById("k-sort").addEventListener("change", function () {
     renderCustomers();
   });
+  document.getElementById("btn-nhac-no").addEventListener("click", function () {
+    var box = document.getElementById("khach-nhac-no-box");
+    var debtors = state.customers.filter(function (c) {
+      return (Number(c.debt) || 0) > 0;
+    }).sort(function (a, b) {
+      return (Number(b.debt) || 0) - (Number(a.debt) || 0);
+    });
+    if (!debtors.length) {
+      box.style.display = "block";
+      box.innerHTML = '<div class="muted">Không có khách nào đang nợ.</div>';
+      return;
+    }
+    var html = '<div style="font-weight:700;color:var(--green-800);margin-bottom:0.45rem">Danh sách khách đang nợ</div>';
+    debtors.forEach(function (c) {
+      var link = zaloLinkRelative(c.phone);
+      html +=
+        '<div class="debt-bulk-item">' +
+        '<strong>' + escapeHtml(c.name) + '</strong> — <span class="debt">' + formatMoney(c.debt || 0) + '</span>' +
+        '<br/><a href="' + hrefAttr(link) + '" target="_blank">' + escapeHtml(link) + '</a>' +
+        '<br/><button type="button" class="btn btn-secondary btn-sm btn-copy-zalo-bulk" data-copy="' + escapeHtml(link) + '">📋 Copy link</button>' +
+        "</div>";
+    });
+    box.style.display = "block";
+    box.innerHTML = html;
+    Array.prototype.forEach.call(box.querySelectorAll(".btn-copy-zalo-bulk"), function (btn) {
+      btn.addEventListener("click", function () {
+        var link = btn.getAttribute("data-copy");
+        if (link) copyText(link, "Đã copy! Gửi cho khách qua Zalo");
+      });
+    });
+  });
 
-  document.getElementById("shop-phone-save").addEventListener("click", function () {
+  document.getElementById("shop-phone-save").addEventListener("click", async function () {
     state.shopPhone = document.getElementById("shop-phone").value.trim();
-    saveState(state);
+    await saveState(state);
     alert("Đã lưu số cửa hàng.");
   });
 
@@ -1545,7 +1746,7 @@
   });
 
   document.getElementById("bc-export-backup").addEventListener("click", function () {
-    var payload = {
+    var state = {
       exportedAt: new Date().toISOString(),
       app: "phan-phoi-hai-duong",
       storageKey: STORAGE_KEY,
@@ -1555,7 +1756,7 @@
       payments: state.payments,
       inventoryLog: state.inventoryLog || []
     };
-    var json = JSON.stringify(payload, null, 2);
+    var json = JSON.stringify(state, null, 2);
     var blob = new Blob([json], { type: "application/json;charset=utf-8" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
@@ -1568,7 +1769,7 @@
     alert("Đã tải file: " + a.download);
   });
 
-  document.getElementById("form-khach").addEventListener("submit", function (e) {
+  document.getElementById("form-khach").addEventListener("submit", async function (e) {
     e.preventDefault();
     var name = document.getElementById("k-ten").value.trim();
     var phone = document.getElementById("k-sdt").value.trim();
@@ -1589,12 +1790,12 @@
       address: address,
       debt: 0
     });
-    saveState(state);
+    await saveState(state);
     e.target.reset();
     refreshAll();
   });
 
-  document.getElementById("form-nhap").addEventListener("submit", function (e) {
+  document.getElementById("form-nhap").addEventListener("submit", async function (e) {
     e.preventDefault();
     var name = document.getElementById("n-ten").value.trim();
     var qty = parseFloat(document.getElementById("n-sl").value, 10);
@@ -1623,12 +1824,12 @@
       qtyIn: qty,
       unitPrice: unitPrice
     });
-    saveState(state);
+    await saveState(state);
     e.target.reset();
     refreshAll();
   });
 
-  document.getElementById("form-dieu-chinh").addEventListener("submit", function (e) {
+  document.getElementById("form-dieu-chinh").addEventListener("submit", async function (e) {
     e.preventDefault();
     var pid = document.getElementById("adj-sp").value;
     var newQty = parseFloat(document.getElementById("adj-sl-moi").value, 10);
@@ -1663,13 +1864,13 @@
       qtyAfter: newQty,
       note: note
     });
-    saveState(state);
+    await saveState(state);
     document.getElementById("adj-ly-do").value = "";
     refreshAll();
     alert("Đã cập nhật tồn kho.");
   });
 
-  document.getElementById("form-ban").addEventListener("submit", function (e) {
+  document.getElementById("form-ban").addEventListener("submit", async function (e) {
     e.preventDefault();
     var phoneNorm = document.getElementById("b-khach").value;
     var pid = document.getElementById("b-sp").value;
@@ -1711,14 +1912,30 @@
       note: note,
       at: new Date().toISOString()
     });
-    saveState(state);
+    await saveState(state);
     document.getElementById("b-sl").value = "";
     document.getElementById("b-ghichu").value = "";
     refreshAll();
+    var zaloBox = document.getElementById("ban-zalo-box");
+    if (zaloBox) {
+      var zaloLink = zaloLinkRelative(c.phone);
+      zaloBox.style.display = "block";
+      zaloBox.innerHTML =
+        '<div style="font-weight:700;color:var(--green-800);margin-bottom:0.35rem">Gửi link Zalo cho khách</div>' +
+        '<div class="muted" style="margin-bottom:0.35rem">' + escapeHtml(c.name) + " (" + escapeHtml(c.phone) + ")</div>" +
+        '<a href="' + hrefAttr(zaloLink) + '" target="_blank">' + escapeHtml(zaloLink) + "</a>" +
+        '<br/><button type="button" class="btn btn-secondary btn-sm" id="btn-ban-copy-zalo" style="margin-top:0.45rem">📋 Copy link gửi khách</button>';
+      var btnCopyAfterSale = document.getElementById("btn-ban-copy-zalo");
+      if (btnCopyAfterSale) {
+        btnCopyAfterSale.addEventListener("click", function () {
+          copyText(zaloLink, "Đã copy! Gửi cho khách qua Zalo");
+        });
+      }
+    }
     alert("Đã ghi bán. Cộng " + formatMoney(total) + " vào nợ khách.");
   });
 
-  document.getElementById("form-tt").addEventListener("submit", function (e) {
+  document.getElementById("form-tt").addEventListener("submit", async function (e) {
     e.preventDefault();
     var phoneNorm = document.getElementById("t-khach").value;
     var amount = parseFloat(document.getElementById("t-tien").value, 10);
@@ -1745,7 +1962,7 @@
       appliedToDebt: apply,
       at: new Date().toISOString()
     });
-    saveState(state);
+    await saveState(state);
     document.getElementById("t-tien").value = "";
     lastPhieuThu = {
       customerName: c.name,
@@ -1816,7 +2033,18 @@
     renderPaymentsList();
   });
 
-  refreshAll();
+  async function initApp() {
+    state = await loadState();
+    if (publicPhoneNorm) {
+      document.getElementById("admin-root").style.display = "none";
+      document.getElementById("public-root").style.display = "block";
+      renderPublic(state, publicPhoneNorm);
+      return;
+    }
+    refreshAll();
+  }
+
+  initApp();
 })();
   </script>
 </body>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo: logic dòng 652–700 (index.html)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 520px; margin: 1rem auto; padding: 0 12px; }
+    pre { background: #f5f5f5; padding: 10px; overflow: auto; font-size: 13px; }
+    button { margin-top: 8px; padding: 8px 12px; cursor: pointer; }
+    input { width: 100%; padding: 8px; box-sizing: border-box; margin: 4px 0; }
+    .out { margin: 8px 0; font-weight: 600; }
+    .zero { color: #2e7d32; }
+    .warn { color: #e65100; }
+    .danger { color: #c62828; }
+  </style>
+</head>
+<body>
+  <h1>Demo logic (652–700)</h1>
+  <p>Mở DevTools (F12) → Console để xem thêm.</p>
+
+  <h2>normalizePhone</h2>
+  <input id="phone" value="0901 234-567" />
+  <button type="button" id="btnNorm">Chuẩn hóa</button>
+  <div class="out" id="outNorm"></div>
+
+  <h2>formatMoney</h2>
+  <input id="money" type="number" value="12500000" />
+  <button type="button" id="btnMoney">Định dạng</button>
+  <div class="out" id="outMoney"></div>
+
+  <h2>formatDate</h2>
+  <input id="iso" value="2026-04-13T14:30:00.000Z" />
+  <button type="button" id="btnDate">Định dạng</button>
+  <div class="out" id="outDate"></div>
+
+  <h2>localDateKeyFromIso &amp; todayLocalDateKey</h2>
+  <button type="button" id="btnKeys">Tính khóa ngày</button>
+  <pre id="outKeys"></pre>
+
+  <h2>debtClassForAmount (màu theo ngưỡng nợ)</h2>
+  <input id="debt" type="number" value="3500000" />
+  <button type="button" id="btnDebt">Lớp CSS</button>
+  <div class="out" id="outDebt"></div>
+
+  <script>
+    // --- Giống index.html 654–703 (chỉ phần hàm, bỏ IIFE bọc ngoài) ---
+    var THRESH_WARN = 2000000;
+    var THRESH_DANGER = 5000000;
+
+    function normalizePhone(s) {
+      if (!s) return "";
+      return String(s).replace(/\D/g, "");
+    }
+
+    function formatMoney(n) {
+      n = Number(n) || 0;
+      return n.toLocaleString("vi-VN") + " đ";
+    }
+
+    function formatDate(iso) {
+      try {
+        var d = new Date(iso);
+        return d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+      } catch (e) {
+        return iso;
+      }
+    }
+
+    function localDateKeyFromIso(iso) {
+      try {
+        var d = new Date(iso);
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, "0");
+        var day = String(d.getDate()).padStart(2, "0");
+        return y + "-" + m + "-" + day;
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function todayLocalDateKey() {
+      var d = new Date();
+      var y = d.getFullYear();
+      var m = String(d.getMonth() + 1).padStart(2, "0");
+      var day = String(d.getDate()).padStart(2, "0");
+      return y + "-" + m + "-" + day;
+    }
+
+    function debtClassForAmount(debt) {
+      var d = Number(debt) || 0;
+      if (d <= 0) return "zero";
+      if (d > THRESH_DANGER) return "danger";
+      if (d > THRESH_WARN) return "warn";
+      return "";
+    }
+
+    // --- Gắn nút thử ---
+    document.getElementById("btnNorm").onclick = function () {
+      var raw = document.getElementById("phone").value;
+      document.getElementById("outNorm").textContent =
+        "Trước: \"" + raw + "\" → Sau: \"" + normalizePhone(raw) + "\"";
+    };
+
+    document.getElementById("btnMoney").onclick = function () {
+      var n = document.getElementById("money").value;
+      document.getElementById("outMoney").textContent = formatMoney(n);
+    };
+
+    document.getElementById("btnDate").onclick = function () {
+      var iso = document.getElementById("iso").value;
+      document.getElementById("outDate").textContent = formatDate(iso);
+    };
+
+    document.getElementById("btnKeys").onclick = function () {
+      var iso = document.getElementById("iso").value;
+      document.getElementById("outKeys").textContent =
+        "localDateKeyFromIso(iso): " + localDateKeyFromIso(iso) + "\n" +
+        "todayLocalDateKey():     " + todayLocalDateKey();
+    };
+
+    document.getElementById("btnDebt").onclick = function () {
+      var debt = Number(document.getElementById("debt").value, 10);
+      var cls = debtClassForAmount(debt);
+      var el = document.getElementById("outDebt");
+      el.className = "out " + cls;
+      el.textContent =
+        "Nợ: " +
+        formatMoney(debt) +
+        ' → class: "' +
+        (cls || "(rỗng — app dùng màu nợ mặc định)") +
+        '"';
+    };
+
+    console.log("Chạy thử nhanh:", {
+      normalizePhone: normalizePhone(" 09x 12 "),
+      formatMoney: formatMoney(1000000),
+      today: todayLocalDateKey()
+    });
+  </script>
+</body>
+</html>
