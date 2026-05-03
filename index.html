@@ -266,10 +266,31 @@
     .public-card .big-debt.warn { color: var(--warn); }
     .public-card .big-debt.danger { color: var(--danger); }
     .pub-name {
-      font-size: clamp(1.1rem, 4.5vw, 1.35rem);
-      font-weight: 800;
+      font-size: clamp(1.3rem, 5vw, 1.6rem);
+      font-weight: 900;
       color: var(--green-800);
-      line-height: 1.25;
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+    }
+    .public-card .big-debt {
+      font-size: clamp(2rem, 8vw, 2.5rem);
+      font-weight: 900;
+      margin: 0.75rem 0;
+      line-height: 1.1;
+    }
+    .public-card .big-debt.zero { 
+      color: var(--green-700) !important; 
+      background: linear-gradient(135deg, var(--green-50), #e8f5e9);
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      border: 2px solid var(--green-200);
+    }
+    .public-card .big-debt:not(.zero) { 
+      color: var(--danger) !important; 
+      background: linear-gradient(135deg, #fff5f5, #ffebee);
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      border: 2px solid #ffcdd2;
     }
     .equation-box {
       text-align: left;
@@ -334,8 +355,9 @@
       padding-bottom: max(1rem, env(safe-area-inset-bottom));
     }
     #public-root main { max-width: 480px; }
-    .stock-low { color: var(--danger); font-weight: 800; }
-    .stock-ok { color: var(--green-800); }
+    .stock-low { color: var(--danger); font-weight: 800; background: #ffebee; padding: 2px 6px; border-radius: 4px; }
+    .stock-medium { color: var(--warn); font-weight: 800; background: #fff3e0; padding: 2px 6px; border-radius: 4px; }
+    .stock-ok { color: var(--green-800); font-weight: 800; background: #e8f5e9; padding: 2px 6px; border-radius: 4px; }
     .bar-chart-wrap {
       margin: 0.75rem 0 0;
       padding: 0.75rem 0.25rem 0.25rem;
@@ -466,6 +488,7 @@
         <button type="button" data-tab="home">Trang chủ</button>
         <button type="button" data-tab="khach">Khách hàng</button>
         <button type="button" data-tab="nhap">Nhập kho</button>
+        <button type="button" data-tab="kho">Lịch sử kho</button>
         <button type="button" data-tab="ban">Bán hàng</button>
         <button type="button" data-tab="tt">Thanh toán</button>
         <button type="button" data-tab="bcao">Báo cáo</button>
@@ -565,6 +588,20 @@
           <button type="submit" class="btn">Thêm vào kho</button>
         </form>
         <h2 style="margin-top:1.25rem">Tồn kho</h2>
+        <div class="row-2">
+          <div>
+            <label for="nhap-search">Tìm nhanh sản phẩm</label>
+            <input id="nhap-search" type="search" placeholder="Tên sản phẩm..." autocomplete="off" />
+          </div>
+          <div>
+            <label for="nhap-filter">Lọc theo loại</label>
+            <select id="nhap-filter">
+              <option value="">Tất cả</option>
+              <option value="thuoc">Thuốc</option>
+              <option value="phanbon">Phân bón</option>
+            </select>
+          </div>
+        </div>
         <ul class="list" id="list-nhap"></ul>
         <h2 style="margin-top:1.25rem">Điều chỉnh tồn (kiểm kê)</h2>
         <form id="form-dieu-chinh">
@@ -578,6 +615,27 @@
         </form>
         <h2 style="margin-top:1.25rem">Lịch sử nhập &amp; điều chỉnh</h2>
         <ul class="list" id="list-nhap-log"></ul>
+      </section>
+
+      <section class="panel" id="panel-kho">
+        <h2>Lịch sử kho</h2>
+        <div class="row-2">
+          <div>
+            <label for="kho-date-filter">Lọc theo ngày</label>
+            <input type="date" id="kho-date-filter" />
+          </div>
+          <div>
+            <label for="kho-type-filter">Lọc theo loại</label>
+            <select id="kho-type-filter">
+              <option value="">Tất cả</option>
+              <option value="import">Nhập kho</option>
+              <option value="adjust">Điều chỉnh</option>
+              <option value="sale">Bán hàng</option>
+            </select>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary" id="kho-clear-filter">Xóa bộ lọc</button>
+        <ul class="list" id="list-kho-history"></ul>
       </section>
 
       <section class="panel" id="panel-ban">
@@ -675,14 +733,18 @@
         <div class="pub-name" id="pub-ten"></div>
         <div class="muted" style="margin-top:0.65rem">Số nợ hiện tại</div>
         <div class="big-debt" id="pub-no"></div>
+        <div class="muted" id="pub-last-transaction" style="margin-top:0.5rem;font-size:0.85rem"></div>
         <div class="muted" id="pub-dc" style="margin-top:0.35rem"></div>
         <div class="equation-box" id="pub-equation" style="display:none"></div>
-        <a class="btn btn-outline" id="pub-call" href="#" style="display:none;margin-top:1rem">Gọi cho cửa hàng</a>
-        <button class="btn btn-secondary" id="pub-share" type="button" style="margin-top:0.6rem">Chia sẻ trang này</button>
+        <div style="display:flex;gap:0.5rem;margin-top:1rem;flex-wrap:wrap;">
+          <a class="btn btn-outline" id="pub-call" href="#" style="display:none;flex:1;">📞 Gọi ngay</a>
+          <a class="btn" id="pub-zalo" href="https://zalo.me/vuxuanviet1102" target="_blank" style="flex:1;background:#0091ff;color:white;">💬 Nhắn Zalo cửa hàng</a>
+        </div>
+        <button class="btn btn-secondary" id="pub-share" type="button" style="margin-top:0.6rem">📤 Chia sẻ trang nợ</button>
       </div>
       <div class="panel">
         <div class="timeline">
-          <h3>5 giao dịch gần nhất</h3>
+          <h3>10 giao dịch gần nhất</h3>
           <div id="pub-gd"></div>
           <h3>Lịch sử mua hàng</h3>
           <div id="pub-mua"></div>
@@ -848,6 +910,92 @@
     }
   }
 
+  function renderKhoHistory() {
+    var ul = document.getElementById("list-kho-history");
+    if (!ul) return;
+    ul.innerHTML = "";
+    
+    ensureInventoryLog();
+    var dateFilter = document.getElementById("kho-date-filter") ? document.getElementById("kho-date-filter").value : "";
+    var typeFilter = document.getElementById("kho-type-filter") ? document.getElementById("kho-type-filter").value : "";
+    
+    // Create combined history from inventory log and sales
+    var allHistory = [];
+    
+    // Add inventory log entries
+    state.inventoryLog.forEach(function (log) {
+      allHistory.push({
+        id: log.id,
+        at: log.at,
+        type: log.type,
+        productName: log.productName,
+        qty: log.qtyIn || log.qtyAfter || 0,
+        unit: log.unit || "",
+        unitPrice: log.unitPrice || 0,
+        note: log.note || ""
+      });
+    });
+    
+    // Add sales entries
+    state.sales.forEach(function (sale) {
+      allHistory.push({
+        id: sale.id,
+        at: sale.at,
+        type: "sale",
+        productName: sale.productName,
+        qty: sale.qty,
+        unit: sale.unit,
+        unitPrice: sale.unitPrice,
+        note: sale.note || ""
+      });
+    });
+    
+    // Filter history
+    var filteredHistory = allHistory.filter(function (item) {
+      var matchesDate = !dateFilter || localDateKeyFromIso(item.at) === dateFilter;
+      var matchesType = !typeFilter || item.type === typeFilter;
+      return matchesDate && matchesType;
+    });
+    
+    // Sort by date (newest first)
+    filteredHistory.sort(function (a, b) { return new Date(b.at) - new Date(a.at); });
+    
+    if (filteredHistory.length === 0) {
+      ul.innerHTML = '<li class="empty">Không có lịch sử phù hợp</li>';
+      return;
+    }
+    
+    filteredHistory.forEach(function (item) {
+      var li = document.createElement("li");
+      var typeText = "";
+      var typeClass = "";
+      
+      switch (item.type) {
+        case "import":
+          typeText = "Nhập kho";
+          typeClass = "tx-tt";
+          break;
+        case "adjust":
+          typeText = "Điều chỉnh";
+          typeClass = "tx-ban";
+          break;
+        case "sale":
+          typeText = "Bán hàng";
+          typeClass = "tx-ban";
+          break;
+      }
+      
+      li.innerHTML =
+        '<span class="tx-type ' + typeClass + '">' + typeText + '</span>' +
+        '<strong>' + escapeHtml(item.productName) + '</strong>' +
+        ' — ' + item.qty + ' ' + escapeHtml(item.unit) +
+        (item.unitPrice ? ' @ ' + formatMoney(item.unitPrice) : '') +
+        '<br/><span class="muted">' + formatDate(item.at) +
+        (item.note ? ' — ' + escapeHtml(item.note) : '') + '</span>';
+      ul.appendChild(li);
+    });
+  }
+
   function getCustomerByPhone(state, phoneNorm) {
     for (var i = 0; i < state.customers.length; i++) {
       if (normalizePhone(state.customers[i].phone) === phoneNorm) return state.customers[i];
@@ -995,6 +1143,7 @@
     var pubEq = document.getElementById("pub-equation");
     var pubCall = document.getElementById("pub-call");
     var pubShare = document.getElementById("pub-share");
+    var pubLastTransaction = document.getElementById("pub-last-transaction");
 
     if (!c) {
       pubTen.textContent = "Không tìm thấy khách hàng";
@@ -1033,26 +1182,27 @@
       '<div class="eq-row"><span>Còn nợ</span><span>= ' + formatMoney(debt) + "</span></div>" +
       '<p class="eq-note">Công thức rõ ràng: <strong>Tổng mua</strong> − <strong>Đã trả</strong> = <strong>Còn nợ</strong>.</p>';
 
-    var shopTel = normalizePhone(st.shopPhone || "");
-    if (shopTel) {
-      pubCall.href = "tel:" + shopTel;
-      pubCall.style.display = "inline-flex";
-    } else {
-      pubCall.style.display = "none";
-    }
+    // Always show phone call button with specific number
+    pubCall.href = "tel:0983417803";
+    pubCall.style.display = "inline-flex";
 
     pubShare.style.display = "inline-flex";
     pubShare.onclick = function () {
-      var shareUrl = window.location.href;
+      var zaloUrl = "https://zalo.me/vuxuanviet1102";
       var shareTitle = "Trang công nợ - " + c.name;
       if (navigator.share) {
         navigator.share({
           title: shareTitle,
-          text: "Xem công nợ của khách hàng",
-          url: shareUrl
-        }).catch(function () {});
+          text: "Xem công nợ của khách hàng: " + c.name + " - " + formatMoney(debt),
+          url: window.location.href
+        }).catch(function () {
+          // Fallback to opening Zalo
+          window.open(zaloUrl, '_blank');
+        });
       } else {
-        copyText(shareUrl, "Đã copy link trang này để chia sẻ.");
+        copyText(window.location.href, "Đã copy link trang nợ để chia sẻ.");
+        // Also open Zalo after copying
+        window.open(zaloUrl, '_blank');
       }
     };
 
@@ -1117,7 +1267,27 @@
       });
     });
     txs.sort(function (a, b) { return new Date(b.at) - new Date(a.at); });
-    var recent = txs.slice(0, 5);
+    var recent = txs.slice(0, 10);
+    
+    // Display most recent transaction date
+    if (recent.length > 0) {
+      var lastTx = recent[0];
+      var lastDate = new Date(lastTx.at);
+      var today = new Date();
+      var diffDays = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+      var dateText = "Giao dịch gần nhất: " + formatDate(lastTx.at);
+      if (diffDays === 0) {
+        dateText += " (Hôm nay)";
+      } else if (diffDays === 1) {
+        dateText += " (Hôm qua)";
+      } else if (diffDays <= 7) {
+        dateText += " (" + diffDays + " ngày trước)";
+      }
+      pubLastTransaction.textContent = dateText;
+    } else {
+      pubLastTransaction.textContent = "Chưa có giao dịch";
+    }
+    
     if (!recent.length) {
       pubGd.innerHTML = '<p class="empty">Chưa có giao dịch</p>';
     } else {
@@ -1303,6 +1473,7 @@
     renderCustomers();
     renderProducts();
     renderInventoryLog();
+    renderKhoHistory();
     fillSelectAdj();
     renderSalesList();
     renderPaymentsList();
@@ -1496,6 +1667,19 @@
     alert("Đã lưu số cửa hàng.");
   });
 
+  // Event listeners for inventory search and filter
+  document.getElementById("nhap-search").addEventListener("input", renderProducts);
+  document.getElementById("nhap-filter").addEventListener("change", renderProducts);
+
+  // Event listeners for kho history tab
+  document.getElementById("kho-date-filter").addEventListener("change", renderKhoHistory);
+  document.getElementById("kho-type-filter").addEventListener("change", renderKhoHistory);
+  document.getElementById("kho-clear-filter").addEventListener("click", function () {
+    document.getElementById("kho-date-filter").value = "";
+    document.getElementById("kho-type-filter").value = "";
+    renderKhoHistory();
+  });
+
   function renderProducts() {
     var ul = document.getElementById("list-nhap");
     ul.innerHTML = "";
@@ -1503,20 +1687,51 @@
       ul.innerHTML = '<li class="empty">Kho trống — nhập hàng ở trên</li>';
       return;
     }
-    state.products.forEach(function (p) {
+    
+    // Get search and filter values
+    var searchTerm = document.getElementById("nhap-search") ? document.getElementById("nhap-search").value.toLowerCase() : "";
+    var filterType = document.getElementById("nhap-filter") ? document.getElementById("nhap-filter").value : "";
+    
+    // Filter products
+    var filteredProducts = state.products.filter(function (p) {
+      var matchesSearch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
+      var matchesType = !filterType || 
+        (filterType === "thuoc" && p.name.toLowerCase().includes("thuốc")) ||
+        (filterType === "phanbon" && (p.name.toLowerCase().includes("phân") || p.name.toLowerCase().includes("bón")));
+      return matchesSearch && matchesType;
+    });
+    
+    if (filteredProducts.length === 0) {
+      ul.innerHTML = '<li class="empty">Không tìm thấy sản phẩm phù hợp</li>';
+      return;
+    }
+    
+    filteredProducts.forEach(function (p) {
       var li = document.createElement("li");
       var q = Number(p.qty);
-      var low = q < LOW_STOCK;
+      var stockClass, stockText;
+      
+      if (q < 10) {
+        stockClass = "stock-low";
+        stockText = " (CẨN BÁO: Sắp hết)";
+      } else if (q < 20) {
+        stockClass = "stock-medium";
+        stockText = " (Cảnh báo: Tồn thấp)";
+      } else {
+        stockClass = "stock-ok";
+        stockText = "";
+      }
+      
       li.innerHTML =
         "<strong>" +
         escapeHtml(p.name) +
         '</strong> — <span class="' +
-        (low ? "stock-low" : "stock-ok") +
+        stockClass +
         '">' +
         p.qty +
         " " +
         escapeHtml(p.unit) +
-        (low ? " (tồn thấp)" : "") +
+        stockText +
         "</span>" +
         '<br/><span class="muted">Đơn giá: ' +
         formatMoney(p.unitPrice) +
@@ -1897,7 +2112,16 @@
       return;
     }
     var total = Math.round(Number(p.unitPrice) * sl);
-    p.qty = Number(p.qty) - sl;
+    var remainingStock = Number(p.qty) - sl;
+    
+    // Check for low stock warning
+    if (remainingStock < 10 && remainingStock > 0) {
+      if (!confirm("⚠️ CẢNH BÁO: Sản phẩm \"" + p.name + "\" sẽ chỉ còn " + remainingStock + " " + p.unit + " sau khi bán!\n\nTiếp tục bán hàng?")) {
+        return;
+      }
+    }
+    
+    p.qty = remainingStock;
     c.debt = (Number(c.debt) || 0) + total;
     state.sales.push({
       id: "s_" + Date.now(),
